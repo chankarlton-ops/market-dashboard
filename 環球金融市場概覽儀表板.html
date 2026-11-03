@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>環球金融市場概覽 | Global Financial Market Overview</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans TC & Inter for crisp numerical & Traditional Chinese rendering -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        burgundy: {
+                            DEFAULT: '#8B0000',
+                            dark: '#660000',
+                            light: '#A52A2A',
+                            subtle: '#FDF4F4',
+                            border: '#E5C6C6'
+                        },
+                        up: '#16A34A',
+                        down: '#DC2626'
+                    },
+                    fontFamily: {
+                        sans: ["'PingFang HK'", "'Microsoft JhengHei'", "'Noto Sans TC'", "'Inter'", 'sans-serif'],
+                        mono: ["'Inter'", 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #FFFFFF;
+            color: #111827;
+            font-family: 'PingFang HK', 'Microsoft JhengHei', 'Noto Sans TC', 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Tabular numerals for razor-sharp alignment in financial tables */
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+        /* Subtle inline editable styling */
+        [contenteditable="true"] {
+            outline: none;
+            border-bottom: 1px dashed #8B0000;
+            background-color: #FFFBEB;
+            padding: 1px 4px;
+            border-radius: 3px;
+            transition: all 0.15s ease;
+        }
+        [contenteditable="true"]:focus {
+            background-color: #FEF3C7;
+            border-bottom: 2px solid #8B0000;
+        }
+        /* Presentation Mode overrides */
+        body.presentation-mode .toolbar-controls {
+            display: none !important;
+        }
+        body.presentation-mode .exit-presentation-btn {
+            display: flex !important;
+        }
+        body.presentation-mode {
+            background-color: #FFFFFF;
+        }
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                padding: 0;
+                background: #FFFFFF;
+            }
+            .dashboard-container {
+                box-shadow: none !important;
+                border: none !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-white text-gray-900 selection:bg-burgundy selection:text-white">
+
+    <!-- Floating Exit Presentation Mode Button (Hidden by default) -->
+    <button id="exitPresentationBtn" onclick="togglePresentationMode()" class="exit-presentation-btn hidden fixed bottom-6 right-6 z-50 items-center gap-2 bg-burgundy text-white px-4 py-2.5 rounded-full shadow-lg hover:bg-burgundy-dark transition-all text-sm font-medium no-print">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        退出簡報模式 (Exit Slide View)
+    </button>
+
+    <!-- Top Interactive Control Bar (Hidden in Presentation/Print Mode) -->
+    <div class="toolbar-controls no-print bg-gray-50 border-b border-gray-200 px-4 sm:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <!-- Left: Dataset Date Switcher & Search -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center bg-white border border-gray-300 rounded-lg p-1 shadow-sm">
+                    <span class="text-xs font-semibold text-gray-500 px-2.5 py-1">數據基準日:</span>
+                    <button id="btnDateNov3" onclick="switchDataset('2026-11-03')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-burgundy text-white shadow-sm">
+                        2026年11月3日 (今日最新)
+                    </button>
+                    <button id="btnDateOct27" onclick="switchDataset('2026-10-27')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-gray-700 hover:bg-gray-100">
+                        2026年10月27日 (參考基準)
+                    </button>
+                </div>
+
+                <!-- Search / Filter Input -->
+                <div class="relative">
+                    <input type="text" id="marketSearch" oninput="filterTables()" placeholder="搜尋指數、債券或貨幣 (如: 標普, 10年期, BTC)..." class="pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-burgundy focus:ring-1 focus:ring-burgundy w-64 transition-all">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Right: Inline Edit, Reset, Presentation & Print Actions -->
+            <div class="flex items-center gap-2.5">
+                <button id="btnEditToggle" onclick="toggleEditMode()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-burgundy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                    <span id="editBtnText">自訂數據 (Inline Edit)</span>
+                </button>
+
+                <button onclick="togglePresentationMode()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-burgundy bg-burgundy-subtle border border-burgundy-border rounded-lg hover:bg-burgundy hover:text-white transition-all shadow-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    簡報視圖 (Slide View)
+                </button>
+
+                <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all shadow-sm">
+                    <svg class="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    列印 / 匯出 PDF
+                </button>
+            </div>
+        </div>
+        <!-- Inline Edit Helper Banner -->
+        <div id="editHelperBanner" class="hidden max-w-7xl mx-auto mt-2.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-burgundy animate-pulse"></span>
+                <span><strong>自訂編輯模式已啟用：</strong>直接點擊表格內的「收市/現價」或「變幅」數值即可修改。正負號將自動更新綠/紅三角指標（▲ 升 / ▼ 跌）。</span>
+            </div>
+            <button onclick="resetCurrentDataset()" class="text-burgundy font-semibold underline hover:text-burgundy-dark">重設為預設數值</button>
+        </div>
+    </div>
+
+    <!-- Main Corporate Dashboard Container -->
+    <main class="dashboard-container max-w-7xl mx-auto px-4 sm:px-8 py-6 sm:py-8 bg-white">
+        
+        <!-- Corporate Header & Right-Aligned Date Banner -->
+        <header class="border-b-2 border-burgundy pb-4 mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div class="flex items-start gap-3.5">
+                <!-- Minimalist Corporate Burgundy Brand Bar -->
+                <div class="w-2 h-12 bg-burgundy rounded-sm flex-shrink-0 mt-0.5"></div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-widest text-burgundy">Global Markets Research • 環球市場研究部</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 mt-0.5">
+                        環球金融市場概覽 <span class="text-base sm:text-lg font-normal text-gray-500 ml-1">Global Financial Market Overview</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Top Right-Aligned Date Banner -->
+            <div class="flex flex-col sm:items-end justify-end">
+                <div class="inline-flex items-center gap-2 bg-burgundy text-white px-4 py-1.5 rounded-md shadow-sm">
+                    <svg class="w-4 h-4 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span id="dateBannerText" class="text-sm sm:text-base font-bold tracking-wide">2026年11月3日 (星期二)</span>
+                </div>
+                <span class="text-[11px] text-gray-500 mt-1">跨資產類別收市及實時報價摘要 • 資料來源：彭博、路透社綜合報價</span>
+            </div>
+        </header>
+
+        <!-- Key Market Highlights Strip (Executive Summary Bar) -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
+            <div class="bg-white border border-gray-200 border-l-4 border-l-burgundy rounded-md p-3 shadow-sm">
+                <div class="text-xs text-gray-500 font-medium">標普500指數 (S&P 500)</div>
+                <div class="flex items-baseline justify-between mt-1">
+                    <span id="kpi-sp500-val" class="text-lg font-bold tabular-nums text-gray-900">7,676.77</span>
+                    <span id="kpi-sp500-chg" class="text-xs font-semibold tabular-nums text-up">▲ +0.64%</span>
+                </div>
+            </div>
+            <div class="bg-white border border-gray-200 border-l-4 border-l-burgundy rounded-md p-3 shadow-sm">
+                <div class="text-xs text-gray-500 font-medium">美國10年期國債 (US 10Y)</div>
+                <div class="flex items-baseline justify-between mt-1">
+                    <span id="kpi-us10y-val" class="text-lg font-bold tabular-nums text-gray-900">5.00%</span>
+                    <span id="kpi-us10y-chg" class="text-xs font-semibold tabular-nums text-up">▲ +4.0 bps</span>
+                </div>
+            </div>
+            <div class="bg-white border border-gray-200 border-l-4 border-l-burgundy rounded-md p-3 shadow-sm">
+                <div class="text-xs text-gray-500 font-medium">美匯指數 (DXY Index)</div>
+                <div class="flex items-baseline justify-between mt-1">
+                    <span id="kpi-dxy-val" class="text-lg font-bold tabular-nums text-gray-900">104.28</span>
+                    <span id="kpi-dxy-chg" class="text-xs font-semibold tabular-nums text-down">▼ -0.18%</span>
+                </div>
+            </div>
+            <div class="bg-white border border-gray-200 border-l-4 border-l-burgundy rounded-md p-3 shadow-sm">
+                <div class="text-xs text-gray-500 font-medium">比特幣 (Bitcoin / USD)</div>
+                <div class="flex items-baseline justify-between mt-1">
+                    <span id="kpi-btc-val" class="text-lg font-bold tabular-nums text-gray-900">$79,863.89</span>
+                    <span id="kpi-btc-chg" class="text-xs font-semibold tabular-nums text-up">▲ +2.15%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2x2 Responsive Grid for the 4 Core Market Sections -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+
+            <!-- SECTION 1: 股票市場 (Stock Market) -->
+            <section class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <!-- Burgundy Section Header -->
+                <div class="bg-white border-b-2 border-burgundy px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <!-- Minimal Burgundy Line Chart SVG Icon -->
+                        <div class="w-8 h-8 rounded-md bg-burgundy-subtle border border-burgundy-border flex items-center justify-center text-burgundy">
+                            <svg class="w-5 h-5" fill="none" stroke="#8B0000" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 14l4-4 4 3 5-6" />
+                                <circle cx="20" cy="7" r="1.5" fill="#8B0000" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base sm:text-lg font-bold text-burgundy tracking-wide">股票市場</h2>
+                            <p class="text-[11px] text-gray-500 font-medium">Global Equities Indices</p>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-semibold text-burgundy bg-burgundy-subtle px-2 py-0.5 rounded border border-burgundy-border">主要股票指數</span>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-burgundy text-white text-xs uppercase tracking-wider">
+                                <th class="py-2.5 px-4 font-semibold">市場 / 指數名稱</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">收市價</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">變幅 (點數)</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">變幅 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-equities" class="divide-y divide-gray-200 text-sm">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-gray-50 px-4 py-2 border-t border-gray-200 text-[11px] text-gray-500 flex justify-between items-center">
+                    <span>註：美股及歐股為最新收市價，亞太區股市為當日收市表現。</span>
+                    <span class="font-mono text-gray-400">EQUITIES</span>
+                </div>
+            </section>
+
+            <!-- SECTION 2: 美國國債 (US Treasuries) -->
+            <section class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <!-- Burgundy Section Header -->
+                <div class="bg-white border-b-2 border-burgundy px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <!-- Minimal Classical Bank/Column SVG Icon -->
+                        <div class="w-8 h-8 rounded-md bg-burgundy-subtle border border-burgundy-border flex items-center justify-center text-burgundy">
+                            <svg class="w-5 h-5" fill="none" stroke="#8B0000" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M4 10l8-6 8 6M5 10v8m4-8v8m6-8v8m4-8v8M3 18h18M2 21h20" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base sm:text-lg font-bold text-burgundy tracking-wide">美國國債</h2>
+                            <p class="text-[11px] text-gray-500 font-medium">US Treasury Benchmark Yields</p>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-semibold text-burgundy bg-burgundy-subtle px-2 py-0.5 rounded border border-burgundy-border">基準主權債券</span>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-burgundy text-white text-xs uppercase tracking-wider">
+                                <th class="py-2.5 px-4 font-semibold">年期 (Tenor)</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">基準票息</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">孳息率 (Yield)</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">變幅 (bps)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-treasuries" class="divide-y divide-gray-200 text-sm">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Dedicated Footer Note for Yield Curve Spread -->
+                <div class="bg-burgundy-subtle px-4 py-2.5 border-t border-burgundy-border text-xs text-gray-800">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-block w-2 h-2 rounded-full bg-burgundy"></span>
+                            <span class="font-bold text-burgundy">孳息率曲線利差註腳 (Yield Curve Spread)：</span>
+                        </div>
+                        <span id="spread-badge" class="font-mono font-bold text-burgundy bg-white px-2 py-0.5 rounded border border-burgundy-border text-[11px]">
+                            2s10s 利差: +28 bps | 10s30s 利差: +24 bps
+                        </span>
+                    </div>
+                    <p id="spread-commentary" class="text-[11px] text-gray-600 mt-1 leading-relaxed">
+                        10年期國債孳息率企穩於 5.00% 心理關口，較2年期國債（4.72%）維持正斜率（+28基點），反映市場對美國經濟軟著陸預期及長端期限溢價（Term Premium）上升。
+                    </p>
+                </div>
+            </section>
+
+            <!-- SECTION 3: 外匯市場 (Foreign Exchange Market) -->
+            <section class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <!-- Burgundy Section Header -->
+                <div class="bg-white border-b-2 border-burgundy px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <!-- Minimal Dollar/Currency SVG Icon -->
+                        <div class="w-8 h-8 rounded-md bg-burgundy-subtle border border-burgundy-border flex items-center justify-center text-burgundy">
+                            <svg class="w-5 h-5" fill="none" stroke="#8B0000" stroke-width="2" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="9" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.5 9.5a2.5 2.5 0 00-2.5-2h-1a2 2 0 000 4h2a2 2 0 010 4h-1a2.5 2.5 0 01-2.5-2M12 6v12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base sm:text-lg font-bold text-burgundy tracking-wide">外匯市場</h2>
+                            <p class="text-[11px] text-gray-500 font-medium">Foreign Exchange & Spot Rates</p>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-semibold text-burgundy bg-burgundy-subtle px-2 py-0.5 rounded border border-burgundy-border">主要貨幣對</span>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-burgundy text-white text-xs uppercase tracking-wider">
+                                <th class="py-2.5 px-4 font-semibold">貨幣對 / 指數</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">現價 (Spot)</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">變幅</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">變幅 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-fx" class="divide-y divide-gray-200 text-sm">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-gray-50 px-4 py-2 border-t border-gray-200 text-[11px] text-gray-500 flex justify-between items-center">
+                    <span>註：港元維持於 7.75 - 7.85 強弱方兌換保證區間內穩定運行。</span>
+                    <span class="font-mono text-gray-400">FX SPOT</span>
+                </div>
+            </section>
+
+            <!-- SECTION 4: 另類資產 (Alternative Assets) -->
+            <section class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+                <!-- Burgundy Section Header -->
+                <div class="bg-white border-b-2 border-burgundy px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <!-- Minimal Stacked Coins / Database SVG Icon -->
+                        <div class="w-8 h-8 rounded-md bg-burgundy-subtle border border-burgundy-border flex items-center justify-center text-burgundy">
+                            <svg class="w-5 h-5" fill="none" stroke="#8B0000" stroke-width="1.9" viewBox="0 0 24 24">
+                                <ellipse cx="12" cy="6" rx="7" ry="3" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 6v6c0 1.66 3.13 3 7 3s7-1.34 7-3V6" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base sm:text-lg font-bold text-burgundy tracking-wide">另類資產</h2>
+                            <p class="text-[11px] text-gray-500 font-medium">Digital Assets, Precious Metals & Energy</p>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-semibold text-burgundy bg-burgundy-subtle px-2 py-0.5 rounded border border-burgundy-border">商品及數碼資產</span>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-burgundy text-white text-xs uppercase tracking-wider">
+                                <th class="py-2.5 px-4 font-semibold">資產名稱 (單位)</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">收市 / 現價</th>
+                                <th class="py-2.5 px-3 font-semibold text-right">變幅 ($)</th>
+                                <th class="py-2.5 px-4 font-semibold text-right">變幅 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-alternatives" class="divide-y divide-gray-200 text-sm">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-gray-50 px-4 py-2 border-t border-gray-200 text-[11px] text-gray-500 flex justify-between items-center">
+                    <span>註：加密貨幣為 24 小時連續交易報價，貴金屬及期油以美元計價。</span>
+                    <span class="font-mono text-gray-400">ALTS & COMMODITIES</span>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Corporate Compliance & Footer -->
+        <footer class="mt-8 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-gray-500">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1 font-semibold text-gray-700">
+                    <span class="w-2 h-2 rounded-full bg-up"></span> ▲ 上升 (Positive)
+                </span>
+                <span class="inline-flex items-center gap-1 font-semibold text-gray-700">
+                    <span class="w-2 h-2 rounded-full bg-down"></span> ▼ 下跌 (Negative)
+                </span>
+                <span class="text-gray-400">|</span>
+                <span>基點 (bps)：1 bps = 0.01%</span>
+            </div>
+            <div class="text-right">
+                免責聲明：本市場概覽僅供機構及專業投資者內部參考，不構成任何投資要約或建議。
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- Application Logic & Dataset Management -->
+    <script>
+        // State Management
+        let currentDatasetKey = '2026-11-03';
+        let isEditMode = false;
+
+        // Default Datasets with Exact Reference Anchor Figures (S&P 500: 7,676.77, US 10Y: 5.00%, Bitcoin: $79,863.89)
+        const defaultDatasets = {
+            '2026-11-03': {
+                dateLabel: '2026年11月3日 (星期二)',
+                spreadBadge: '2s10s 利差: +28 bps | 10s30s 利差: +24 bps',
+                spreadCommentary: '截至2026年11月3日，美國10年期國債孳息率報 5.00%，與2年期國債（4.72%）維持 +28 基點正利差；長端30年期企穩於 5.24%，顯示市場對財政供應及通脹預期保持審慎。',
+                equities: [
+                    { name: '標普500指數', sub: 'S&P 500 Index', close: '7,676.77', change: '+48.82', pct: '+0.64%', dir: 1 },
+                    { name: '道瓊斯工業平均指數', sub: 'Dow Jones Industrial', close: '46,812.40', change: '+165.35', pct: '+0.35%', dir: 1 },
+                    { name: '納斯達克綜合指數', sub: 'Nasdaq Composite', close: '24,918.65', change: '+214.10', pct: '+0.87%', dir: 1 },
+                    { name: '恒生指數', sub: 'Hang Seng Index', close: '21,645.80', change: '-142.30', pct: '-0.65%', dir: -1 },
+                    { name: '滬深300指數', sub: 'CSI 300 Index', close: '4,128.55', change: '+26.40', pct: '+0.64%', dir: 1 },
+                    { name: '日經225指數', sub: 'Nikkei 225', close: '41,580.20', change: '+385.60', pct: '+0.94%', dir: 1 },
+                    { name: '歐洲Stoxx 50指數', sub: 'Euro Stoxx 50', close: '5,245.10', change: '-18.45', pct: '-0.35%', dir: -1 }
+                ],
+                treasuries: [
+                    { name: '美國 2年期國債', sub: 'US 2-Year Note', coupon: '4.625%', yield: '4.72%', bps: '+2.5 bps', dir: 1 },
+                    { name: '美國 5年期國債', sub: 'US 5-Year Note', coupon: '4.750%', yield: '4.84%', bps: '+3.2 bps', dir: 1 },
+                    { name: '美國 10年期國債', sub: 'US 10-Year Benchmark', coupon: '4.875%', yield: '5.00%', bps: '+4.0 bps', dir: 1 },
+                    { name: '美國 30年期國債', sub: 'US 30-Year Bond', coupon: '5.000%', yield: '5.24%', bps: '+4.8 bps', dir: 1 }
+                ],
+                fx: [
+                    { name: '美匯指數', sub: 'US Dollar Index (DXY)', spot: '104.28', change: '-0.19', pct: '-0.18%', dir: -1 },
+                    { name: '歐元 / 美元', sub: 'EUR / USD', spot: '1.0864', change: '+0.0028', pct: '+0.26%', dir: 1 },
+                    { name: '美元 / 日圓', sub: 'USD / JPY', spot: '152.45', change: '-0.62', pct: '-0.41%', dir: -1 },
+                    { name: '英鎊 / 美元', sub: 'GBP / USD', spot: '1.2985', change: '+0.0041', pct: '+0.32%', dir: 1 },
+                    { name: '美元 / 離岸人民幣', sub: 'USD / CNH', spot: '7.1480', change: '-0.0115', pct: '-0.16%', dir: -1 },
+                    { name: '美元 / 港元', sub: 'USD / HKD', spot: '7.7745', change: '+0.0012', pct: '+0.02%', dir: 1 }
+                ],
+                alternatives: [
+                    { name: '比特幣', sub: 'Bitcoin (BTC / USD)', price: '$79,863.89', change: '+1,680.45', pct: '+2.15%', dir: 1 },
+                    { name: '以太幣', sub: 'Ethereum (ETH / USD)', price: '$3,942.50', change: '+64.20', pct: '+1.66%', dir: 1 },
+                    { name: '現貨黃金', sub: 'Spot Gold (XAU / oz)', price: '$2,784.60', change: '+18.30', pct: '+0.66%', dir: 1 },
+                    { name: '布蘭特期油', sub: 'Brent Crude (USD / bbl)', price: '$74.85', change: '-0.92', pct: '-1.21%', dir: -1 },
+                    { name: '紐約期油', sub: 'WTI Crude (USD / bbl)', price: '$71.10', change: '-0.85', pct: '-1.18%', dir: -1 }
+                ]
+            },
+            '2026-10-27': {
+                dateLabel: '2026年10月27日 (星期二)',
+                spreadBadge: '2s10s 利差: +25 bps | 10s30s 利差: +22 bps',
+                spreadCommentary: '2026年10月27日參考基準：10年期國債孳息率觸及 5.00% 關鍵水平，2年期報 4.75%，2s10s 孳息率曲線維持 +25 基點正斜率，反映長債拍賣需求與聯儲局利率路徑重估。',
+                equities: [
+                    { name: '標普500指數', sub: 'S&P 500 Index', close: '7,676.77', change: '+52.14', pct: '+0.68%', dir: 1 },
+                    { name: '道瓊斯工業平均指數', sub: 'Dow Jones Industrial', close: '46,647.05', change: '-94.20', pct: '-0.20%', dir: -1 },
+                    { name: '納斯達克綜合指數', sub: 'Nasdaq Composite', close: '24,704.55', change: '+198.40', pct: '+0.81%', dir: 1 },
+                    { name: '恒生指數', sub: 'Hang Seng Index', close: '21,788.10', change: '+185.60', pct: '+0.86%', dir: 1 },
+                    { name: '滬深300指數', sub: 'CSI 300 Index', close: '4,102.15', change: '-14.80', pct: '-0.36%', dir: -1 },
+                    { name: '日經225指數', sub: 'Nikkei 225', close: '41,194.60', change: '+290.15', pct: '+0.71%', dir: 1 },
+                    { name: '歐洲Stoxx 50指數', sub: 'Euro Stoxx 50', close: '5,263.55', change: '+22.30', pct: '+0.43%', dir: 1 }
+                ],
+                treasuries: [
+                    { name: '美國 2年期國債', sub: 'US 2-Year Note', coupon: '4.625%', yield: '4.75%', bps: '+3.0 bps', dir: 1 },
+                    { name: '美國 5年期國債', sub: 'US 5-Year Note', coupon: '4.750%', yield: '4.86%', bps: '+4.5 bps', dir: 1 },
+                    { name: '美國 10年期國債', sub: 'US 10-Year Benchmark', coupon: '4.875%', yield: '5.00%', bps: '+5.2 bps', dir: 1 },
+                    { name: '美國 30年期國債', sub: 'US 30-Year Bond', coupon: '5.000%', yield: '5.22%', bps: '+4.0 bps', dir: 1 }
+                ],
+                fx: [
+                    { name: '美匯指數', sub: 'US Dollar Index (DXY)', spot: '104.47', change: '+0.31', pct: '+0.30%', dir: 1 },
+                    { name: '歐元 / 美元', sub: 'EUR / USD', spot: '1.0836', change: '-0.0035', pct: '-0.32%', dir: -1 },
+                    { name: '美元 / 日圓', sub: 'USD / JPY', spot: '153.07', change: '+0.74', pct: '+0.49%', dir: 1 },
+                    { name: '英鎊 / 美元', sub: 'GBP / USD', spot: '1.2944', change: '-0.0022', pct: '-0.17%', dir: -1 },
+                    { name: '美元 / 離岸人民幣', sub: 'USD / CNH', spot: '7.1595', change: '+0.0140', pct: '+0.20%', dir: 1 },
+                    { name: '美元 / 港元', sub: 'USD / HKD', spot: '7.7733', change: '-0.0008', pct: '-0.01%', dir: -1 }
+                ],
+                alternatives: [
+                    { name: '比特幣', sub: 'Bitcoin (BTC / USD)', price: '$79,863.89', change: '+2,145.10', pct: '+2.76%', dir: 1 },
+                    { name: '以太幣', sub: 'Ethereum (ETH / USD)', price: '$3,878.30', change: '+82.40', pct: '+2.17%', dir: 1 },
+                    { name: '現貨黃金', sub: 'Spot Gold (XAU / oz)', price: '$2,766.30', change: '-12.40', pct: '-0.45%', dir: -1 },
+                    { name: '布蘭特期油', sub: 'Brent Crude (USD / bbl)', price: '$75.77', change: '+1.15', pct: '+1.54%', dir: 1 },
+                    { name: '紐約期油', sub: 'WTI Crude (USD / bbl)', price: '$71.95', change: '+1.08', pct: '+1.52%', dir: 1 }
+                ]
+            }
+        };
+
+        // Deep clone working copy so user edits persist until reset
+        let workingData = JSON.parse(JSON.stringify(defaultDatasets));
+
+        // Helper to format directional triangle badge (▲ Green / ▼ Red)
+        function formatChangeCell(textValue, direction) {
+            const cleanText = textValue.replace(/^[▲▼]\s*/, '').trim();
+            // Auto-detect direction if user edited the text
+            let dir = direction;
+            if (cleanText.startsWith('-')) dir = -1;
+            else if (cleanText.startsWith('+')) dir = 1;
+
+            if (dir > 0) {
+                return `<span class="inline-flex items-center justify-end gap-1 font-semibold text-up tabular-nums">
+                            <span class="text-[10px]">▲</span>
+                            <span class="editable-cell" contenteditable="${isEditMode}" onblur="handleCellEdit(this)">${cleanText}</span>
+                        </span>`;
+            } else if (dir < 0) {
+                return `<span class="inline-flex items-center justify-end gap-1 font-semibold text-down tabular-nums">
+                            <span class="text-[10px]">▼</span>
+                            <span class="editable-cell" contenteditable="${isEditMode}" onblur="handleCellEdit(this)">${cleanText}</span>
+                        </span>`;
+            } else {
+                return `<span class="inline-flex items-center justify-end gap-1 font-semibold text-gray-500 tabular-nums">
+                            <span class="editable-cell" contenteditable="${isEditMode}" onblur="handleCellEdit(this)">${cleanText}</span>
+                        </span>`;
+            }
+        }
+
+        // Render all 4 tables and header KPIs
+        function renderDashboard() {
+            const data = workingData[currentDatasetKey];
+
+            // Update Date Banner
+            document.getElementById('dateBannerText').textContent = data.dateLabel;
+            document.getElementById('spread-badge').textContent = data.spreadBadge;
+            document.getElementById('spread-commentary').textContent = data.spreadCommentary;
+
+            // Update Top KPI Strip from table values
+            const sp500 = data.equities[0];
+            const us10y = data.treasuries[2];
+            const dxy = data.fx[0];
+            const btc = data.alternatives[0];
+
+            document.getElementById('kpi-sp500-val').textContent = sp500.close;
+            updateKpiBadge('kpi-sp500-chg', sp500.pct, sp500.dir);
+
+            document.getElementById('kpi-us10y-val').textContent = us10y.yield;
+            updateKpiBadge('kpi-us10y-chg', us10y.bps, us10y.dir);
+
+            document.getElementById('kpi-dxy-val').textContent = dxy.spot;
+            updateKpiBadge('kpi-dxy-chg', dxy.pct, dxy.dir);
+
+            document.getElementById('kpi-btc-val').textContent = btc.price;
+            updateKpiBadge('kpi-btc-chg', btc.pct, btc.dir);
+
+            // 1. Render Equities
+            const eqBody = document.getElementById('table-equities');
+            eqBody.innerHTML = data.equities.map((item, idx) => `
+                <tr class="market-row ${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]'} hover:bg-burgundy-subtle/60 transition-colors">
+                    <td class="py-2.5 px-4">
+                        <div class="font-semibold text-gray-900">${item.name}</div>
+                        <div class="text-[11px] text-gray-500">${item.sub}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-bold text-gray-900 tabular-nums">
+                        <span class="editable-cell" data-section="equities" data-idx="${idx}" data-field="close" contenteditable="${isEditMode}" onblur="handlePriceEdit(this)">${item.close}</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right" data-section="equities" data-idx="${idx}" data-field="change">
+                        ${formatChangeCell(item.change, item.dir)}
+                    </td>
+                    <td class="py-2.5 px-4 text-right" data-section="equities" data-idx="${idx}" data-field="pct">
+                        ${formatChangeCell(item.pct, item.dir)}
+                    </td>
+                </tr>
+            `).join('');
+
+            // 2. Render US Treasuries
+            const trBody = document.getElementById('table-treasuries');
+            trBody.innerHTML = data.treasuries.map((item, idx) => `
+                <tr class="market-row ${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]'} hover:bg-burgundy-subtle/60 transition-colors">
+                    <td class="py-2.5 px-4">
+                        <div class="font-semibold text-gray-900">${item.name}</div>
+                        <div class="text-[11px] text-gray-500">${item.sub}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right text-gray-600 tabular-nums font-medium">
+                        <span class="editable-cell" data-section="treasuries" data-idx="${idx}" data-field="coupon" contenteditable="${isEditMode}" onblur="handlePriceEdit(this)">${item.coupon}</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-bold text-gray-900 tabular-nums">
+                        <span class="editable-cell" data-section="treasuries" data-idx="${idx}" data-field="yield" contenteditable="${isEditMode}" onblur="handlePriceEdit(this)">${item.yield}</span>
+                    </td>
+                    <td class="py-2.5 px-4 text-right" data-section="treasuries" data-idx="${idx}" data-field="bps">
+                        ${formatChangeCell(item.bps, item.dir)}
+                    </td>
+                </tr>
+            `).join('');
+
+            // 3. Render Foreign Exchange
+            const fxBody = document.getElementById('table-fx');
+            fxBody.innerHTML = data.fx.map((item, idx) => `
+                <tr class="market-row ${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]'} hover:bg-burgundy-subtle/60 transition-colors">
+                    <td class="py-2.5 px-4">
+                        <div class="font-semibold text-gray-900">${item.name}</div>
+                        <div class="text-[11px] text-gray-500">${item.sub}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-bold text-gray-900 tabular-nums">
+                        <span class="editable-cell" data-section="fx" data-idx="${idx}" data-field="spot" contenteditable="${isEditMode}" onblur="handlePriceEdit(this)">${item.spot}</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right" data-section="fx" data-idx="${idx}" data-field="change">
+                        ${formatChangeCell(item.change, item.dir)}
+                    </td>
+                    <td class="py-2.5 px-4 text-right" data-section="fx" data-idx="${idx}" data-field="pct">
+                        ${formatChangeCell(item.pct, item.dir)}
+                    </td>
+                </tr>
+            `).join('');
+
+            // 4. Render Alternative Assets
+            const altBody = document.getElementById('table-alternatives');
+            altBody.innerHTML = data.alternatives.map((item, idx) => `
+                <tr class="market-row ${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]'} hover:bg-burgundy-subtle/60 transition-colors">
+                    <td class="py-2.5 px-4">
+                        <div class="font-semibold text-gray-900">${item.name}</div>
+                        <div class="text-[11px] text-gray-500">${item.sub}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-bold text-gray-900 tabular-nums">
+                        <span class="editable-cell" data-section="alternatives" data-idx="${idx}" data-field="price" contenteditable="${isEditMode}" onblur="handlePriceEdit(this)">${item.price}</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right" data-section="alternatives" data-idx="${idx}" data-field="change">
+                        ${formatChangeCell(item.change, item.dir)}
+                    </td>
+                    <td class="py-2.5 px-4 text-right" data-section="alternatives" data-idx="${idx}" data-field="pct">
+                        ${formatChangeCell(item.pct, item.dir)}
+                    </td>
+                </tr>
+            `).join('');
+
+            // Re-apply search filter if active
+            filterTables();
+        }
+
+        function updateKpiBadge(elementId, valueText, dir) {
+            const el = document.getElementById(elementId);
+            const clean = valueText.replace(/^[▲▼]\s*/, '').trim();
+            if (dir >= 0 && !clean.startsWith('-')) {
+                el.textContent = `▲ ${clean}`;
+                el.className = 'text-xs font-semibold tabular-nums text-up';
+            } else {
+                el.textContent = `▼ ${clean}`;
+                el.className = 'text-xs font-semibold tabular-nums text-down';
+            }
+        }
+
+        // Switch between 2026-11-03 (Today) and 2026-10-27 (Reference Date)
+        function switchDataset(key) {
+            currentDatasetKey = key;
+            const btnNov3 = document.getElementById('btnDateNov3');
+            const btnOct27 = document.getElementById('btnDateOct27');
+
+            if (key === '2026-11-03') {
+                btnNov3.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-burgundy text-white shadow-sm';
+                btnOct27.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-gray-700 hover:bg-gray-100';
+            } else {
+                btnOct27.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-burgundy text-white shadow-sm';
+                btnNov3.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-gray-700 hover:bg-gray-100';
+            }
+            renderDashboard();
+        }
+
+        // Toggle Inline Edit Mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('btnEditToggle');
+            const btnText = document.getElementById('editBtnText');
+            const banner = document.getElementById('editHelperBanner');
+
+            if (isEditMode) {
+                btn.classList.add('bg-amber-50', 'border-burgundy', 'text-burgundy');
+                btnText.textContent = '完成編輯 (Done Editing)';
+                banner.classList.remove('hidden');
+            } else {
+                btn.classList.remove('bg-amber-50', 'border-burgundy', 'text-burgundy');
+                btnText.textContent = '自訂數據 (Inline Edit)';
+                banner.classList.add('hidden');
+            }
+            renderDashboard();
+        }
+
+        // Handle inline edits for price/close cells
+        function handlePriceEdit(spanEl) {
+            const section = spanEl.getAttribute('data-section');
+            const idx = parseInt(spanEl.getAttribute('data-idx'), 10);
+            const field = spanEl.getAttribute('data-field');
+            const newVal = spanEl.textContent.trim();
+
+            if (workingData[currentDatasetKey][section] && workingData[currentDatasetKey][section][idx]) {
+                workingData[currentDatasetKey][section][idx][field] = newVal;
+                renderDashboard();
+            }
+        }
+
+        // Handle inline edits for change cells & automatically recalculate ▲ / ▼ direction
+        function handleCellEdit(spanEl) {
+            const td = spanEl.closest('td');
+            if (!td) return;
+            const section = td.getAttribute('data-section');
+            const idx = parseInt(td.getAttribute('data-idx'), 10);
+            const field = td.getAttribute('data-field');
+            const newVal = spanEl.textContent.trim();
+
+            const item = workingData[currentDatasetKey][section][idx];
+            if (item) {
+                item[field] = newVal;
+                if (newVal.startsWith('-')) {
+                    item.dir = -1;
+                } else if (newVal.startsWith('+')) {
+                    item.dir = 1;
+                }
+                renderDashboard();
+            }
+        }
+
+        // Reset current dataset to default values
+        function resetCurrentDataset() {
+            workingData[currentDatasetKey] = JSON.parse(JSON.stringify(defaultDatasets[currentDatasetKey]));
+            renderDashboard();
+        }
+
+        // Search / Filter rows across all 4 tables
+        function filterTables() {
+            const query = document.getElementById('marketSearch').value.trim().toLowerCase();
+            const rows = document.querySelectorAll('.market-row');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (!query || text.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Toggle Presentation / Slide View Mode
+        function togglePresentationMode() {
+            document.body.classList.toggle('presentation-mode');
+        }
+
+        // Initialize on load
+        window.onload = function () {
+            renderDashboard();
+        };
+    </script>
+</body>
+</html>
